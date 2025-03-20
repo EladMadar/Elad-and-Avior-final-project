@@ -1,0 +1,226 @@
+{% extends 'base/home.html' %}
+{% load helpers %}
+
+{% block controls %}
+  {% if config.SITE_SUBSCRIBERS %}
+    <div>
+      <a href="{% url 'subscriber_subscribe' %}" class="bg-indigo-500 hover:bg-indigo-600 text-white shadow px-4 py-2 rounded-md" role="button">Get Notifications</a>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{% block home_content %}
+  <div class="flex flex-col space-y-4">
+    {% for incident_maintenance in open_incidents_maintenances %}
+      <div class="border-4 {{ incident_maintenance.get_impact_border_color }} rounded-md">
+        <div class="px-8 py-2 {{ incident_maintenance.get_impact_color }} text-white">{{ incident_maintenance.title }}</div>
+        <div class="px-8 py-2 flex flex-col space-y-4">
+          {% for update in incident_maintenance.updates.all %}
+            <div class="flex flex-col space-y-0.5">
+              <div class="flex flex-row space-x-2">
+                <div class="font-bold">
+                  {% if update.new_status %}
+                    {{ update.get_status_display }}
+                  {% else %}
+                    Update
+                  {% endif %}
+                </div>
+                <div>&mdash;</div>
+                <div>{{ update.text|markdown }}</div>
+              </div>
+              <div class="text-gray-400">
+                {{ update.created }} by {% if update.user.get_full_name %}
+                  {{ update.user.get_full_name }}
+                {% else %}
+                  Automation
+                {% endif %}
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="px-8 py-2 text-gray-400 text-sm">
+          {% if incident_maintenance.end_at %}<div>Ends at: {{ incident_maintenance.end_at }}</div>{% endif %}
+          {% with incident_maintenance.components|get_visible_components|join_components_with_groups as affected_components %}
+            {% if affected_components %}<div>Affected Components: {{ affected_components }}</div>{% endif %}
+          {% endwith %}
+        </div>
+      </div>
+    {% empty %}
+      <div class="rounded-md {{ status.0 }} p-4">
+        <div class="flex items-center">
+          <div class="flex-shrink-0">
+            <i class="mdi {{ status.2 }} text-xl"></i>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium {{ status.1 }}">{{ status.3 }}</h3>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  <div class="flex flex-col bg-zinc-300 dark:bg-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700 rounded-md">
+    {% for componentgroup_component in componentgroups_components %}
+      {% if componentgroup_component.components %}
+        {% with componentgroup_component as componentgroup %}
+          <div x-data="{ open: {{ componentgroup.should_expand }} }" class="px-4 py-4">
+            <div @click="open = !open" role="button" class="flex flex-row space-x-4 items-center">
+              <div>
+                <i class="mdi mdi-plus-circle text-lg" x-show="!open"></i>
+                <i class="mdi mdi-minus-circle-outline text-lg" x-show="open"></i>
+              </div>
+              <div class="grow flex flex-row space-x-2 items-center">
+                {{ componentgroup.name }}
+                {% if componentgroup.description %}
+                  <div data-tooltip="{{ componentgroup.description }}"><i class="mdi mdi-help-circle-outline text-lg"></i></div>
+                {% endif %}
+              </div>
+              <div x-show="!open">{% componentgroup_status componentgroup=componentgroup %}</div>
+            </div>
+            <div class="flex flex-col pt-2 pl-8 divide-y divide-zinc-200 dark:divide-zinc-700" x-show="open">
+              {% for component in componentgroup.components|get_visible_components %}
+                <div class="flex flex-row justify-between items-center py-2">
+                  <div class="flex flex-row space-x-2 items-center">
+                    {% if component.link %}
+                      <a href="{{ component.link }}">{{ component.name }}</a>
+                    {% else %}
+                      {{ component.name }}
+                    {% endif %}
+                    {% if component.description %}
+                      <div data-tooltip="{{ component.description }}"><i class="mdi mdi-help-circle-outline text-lg"></i></div>
+                    {% endif %}
+                  </div>
+                  <div class="{{ component.get_status_text_color }}" data-tooltip="Last Update: {{ component.last_updated }}">{{ component.get_status_display }}</div>
+                </div>
+              {% endfor %}
+            </div>
+          </div>
+        {% endwith %}
+      {% else %}
+        {% with componentgroup_component as component %}
+          <div class="px-4 py-4 flex flex-row justify-between items-center">
+            <div class="flex flex-row space-x-2 items-center">
+              {% if component.link %}
+                <a href="{{ component.link }}">{{ component.name }}</a>
+              {% else %}
+                {{ component.name }}
+              {% endif %}
+              {% if component.description %}
+                <div data-tooltip="{{ component.description }}"><i class="mdi mdi-help-circle-outline text-lg"></i></div>
+              {% endif %}
+            </div>
+            <div class="{{ component.get_status_text_color }}" data-tooltip="Last Update: {{ component.last_updated }}">{{ component.get_status_display }}</div>
+          </div>
+        {% endwith %}
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% if metrics|length > 0 %}
+    <div class="flex flex-col space-y-4">
+      {% for m in metrics %}
+        <div class="grow bg-zinc-100 dark:bg-zinc-800 p-2 space-y-2 rounded-md shadow-lg">
+          <div x-data="{ open: {{ m.should_expand }} }" class="px-2 py-2">
+            <div @click="open = !open" role="button" class="flex flex-row space-x-4 items-center">
+              <div>
+                <i class="mdi mdi-plus-circle" x-show="!open"></i>
+                <i class="mdi mdi-minus-circle-outline" x-show="open"></i>
+              </div>
+              <div class="text-lg">{{ m.title }}</div>
+            </div>
+            <div class="flex flex-col divide-y divide-zinc-200 dark:divide-zinc-700" x-show="open">
+              {% metric metric=m range='12h' %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  {% if upcoming_maintenances|length > 0 %}
+    <div class="flex flex-col space-y-4">
+        <div class="text-2xl">Upcoming Maintenances</div>
+      {% for maintenance in upcoming_maintenances %}
+        <div class="border-4 {{ maintenance.get_impact_border_color }} rounded-md">
+          <div class="px-8 py-2 {{ maintenance.get_impact_color }} text-white">{{ maintenance.title }}</div>
+          <div class="px-8 py-2 flex flex-col space-y-4">
+            {% for update in maintenance.updates.all %}
+              <div class="flex flex-col space-y-0.5">
+                <div class="flex flex-row space-x-2">
+                  <div class="font-bold">
+                    {% if update.new_status %}
+                      {{ update.get_status_display }}
+                    {% else %}
+                      Update
+                    {% endif %}
+                  </div>
+                  <div>&mdash;</div>
+                  <div>{{ update.text|markdown }}</div>
+                </div>
+                <div class="text-gray-400">
+                  {{ update.created }} by {% if update.user.get_full_name %}
+                    {{ update.user.get_full_name }}
+                  {% else %}
+                    Automation
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+          <div class="px-8 py-2 text-gray-400 text-sm">
+            <div>Scheduled at: {{ maintenance.scheduled_at }}</div>
+            <div>Ends at: {{ maintenance.end_at }}</div>
+            {% with maintenance.components|get_visible_components|join_components_with_groups as affected_components %}
+              {% if affected_components %}<div>Affected Components: {{ affected_components }}</div>{% endif %}
+            {% endwith %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+  <div class="flex flex-col space-y-4">
+    <div class="text-2xl">Past Incidents</div>
+    <div class="flex flex-col space-y-8">
+      {% for date, incidents_maintenances in resolved_incidents_maintenances %}
+        <div class="flex flex-col space-y-4 divide-y divide-gray-300 dark:divide-gray-500">
+          <div class="text-xl">{{ date|format_date }}</div>
+          <div class="flex flex-col space-y-2">
+            {% for incident_maintenance in incidents_maintenances %}
+              <div>
+                <div class="font-bold text-lg {{ incident_maintenance.get_impact_text_color }}">{{ incident_maintenance.title }}</div>
+                <div class="flex flex-col space-y-2">
+                  {% for update in incident_maintenance.updates.all %}
+                    <div class="flex flex-col space-y-0.5">
+                      <div class="flex flex-row space-x-2">
+                        <div class="font-bold">
+                          {% if update.new_status %}
+                            {{ update.get_status_display }}
+                          {% else %}
+                            Update
+                          {% endif %}
+                        </div>
+                        <div>&mdash;</div>
+                        <div>{{ update.text|markdown }}</div>
+                      </div>
+                      <div class="text-gray-400">
+                        {{ update.created }} by {% if update.user.get_full_name %}
+                          {{ update.user.get_full_name }}
+                        {% else %}
+                          Automation
+                        {% endif %}
+                      </div>
+                    </div>
+                  {% endfor %}
+                </div>
+                <div class="py-2 text-gray-400 text-sm">
+                  {% with incident_maintenance.components|get_visible_components|join_components_with_groups as affected_components %}
+                    {% if affected_components %}<div>Affected Components: {{ affected_components }}</div>{% endif %}
+                  {% endwith %}
+                </div>
+              </div>
+            {% empty %}
+              <div class="text-gray-400">No incidents or maintenances reported.</div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}

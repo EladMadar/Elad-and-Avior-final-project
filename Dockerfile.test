@@ -1,0 +1,32 @@
+FROM python:3.11-slim-bullseye
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install test dependencies
+RUN pip install --no-cache-dir \
+    pytest \
+    pytest-django \
+    pytest-cov \
+    pytest-mock \
+    factory-boy \
+    faker
+
+# The application code will be mounted as a volume
+CMD ["pytest", "statuspage/tests", "-v", "--cov=statuspage"]

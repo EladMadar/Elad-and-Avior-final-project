@@ -1,0 +1,16 @@
+{% load render_table from django_tables2 %}
+
+<div class="bg-zinc-100 dark:bg-zinc-800 p-2 space-y-2 ring-1 ring-zinc-500 rounded-md shadow-lg {% if panel_class %}{{ panel_class }}{% endif %}">
+    {% if heading %}
+    <div class="text-xl">
+        {{ heading }}
+    </div>
+    {% endif %}
+    <div class="card-body table-responsive">
+      {% if table.rows %}
+        {% render_table table 'inc/table.html' %}
+      {% else %}
+        <div class="text-gray-400">None</div>
+      {% endif %}
+    </div>
+</div>

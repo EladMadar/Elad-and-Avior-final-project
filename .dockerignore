@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Docker
+.docker
+Dockerfile
+Dockerfile.dev
+docker-compose.yml
+.dockerignore
+
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__
+.Python
+*.py[cod]
+*$py.class
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Development/IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# Project specific
+*.sqlite3
+media/
+static/
+docs/
+tests/
+*.log
+*.pot
+*.mo
+
+# System
+.DS_Store
+Thumbs.db

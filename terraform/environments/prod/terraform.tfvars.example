@@ -1,0 +1,32 @@
+# Example production environment configuration
+# Copy this file to terraform.tfvars and modify the values
+
+project = "status-page"
+
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+
+# EKS Configuration
+eks_cluster_version = "1.28"
+eks_node_instance_types = [
+  "t3a.medium",  # Primary instance type (SPOT)
+  "t3.medium"    # Fallback instance type (SPOT)
+]
+
+# RDS Configuration
+rds_instance_class = "db.t4g.medium"  # ARM-based instance for cost optimization
+
+# Redis Configuration
+redis_node_type = "cache.t4g.medium"  # ARM-based instance for cost optimization
+
+# SSL Certificate ARN
+# Replace with your ACM certificate ARN
+certificate_arn = "arn:aws:acm:us-east-1:123456789012:certificate/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+
+# Resource Tags
+tags = {
+  Environment = "production"
+  ManagedBy   = "terraform"
+  Project     = "status-page"
+  Owner       = "devops-team"
+}
