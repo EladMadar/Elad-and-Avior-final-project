@@ -1,5 +1,5 @@
 # Production Environment Configuration
-
+# add to vars According do best practice
 locals {
   environment = "prod"
   region     = "us-east-1"  # Change as needed
@@ -76,7 +76,7 @@ module "waf" {
 
   project     = var.project
   environment = local.environment
-  
+  # add rate_limit to vars
   # Production WAF settings
   rate_limit = 2000  # Adjust based on expected traffic
   blocked_countries = []  # Add country codes to block if needed
