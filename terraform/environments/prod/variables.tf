@@ -46,3 +46,20 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "rate_limit" {
+  description = "WAF rate limit for IP throttling"
+  type        = number
+  default     = 2000
+}
+variable "environment" {
+  description = "The environment (e.g., dev, staging, prod)"
+  type        = string
+  default     = "prod"
+}
+
+variable "region" {
+  description = "AWS Region to deploy to"
+  type        = string
+  default     = "us-east-1"
+}

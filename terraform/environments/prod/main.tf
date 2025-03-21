@@ -1,8 +1,8 @@
 # Production Environment Configuration
-# add to vars According do best practice
+
 locals {
-  environment = "prod"
-  region     = "us-east-1"  # Change as needed
+  environment = var.environment
+  region      = var.region
 }
 
 module "vpc" {
