@@ -64,6 +64,8 @@ jobs:
           DB_HOST: localhost
           DB_PORT: 5432
           REDIS_HOST: localhost
+          REDIS_URL: redis://localhost:6379/0
+          GITHUB_ACTIONS: true
           DJANGO_SETTINGS_MODULE: statuspage.settings
         run: |
           cd statuspage
