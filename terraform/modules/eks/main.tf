@@ -2,6 +2,17 @@
 
 locals {
   cluster_name = "${var.project}-${var.environment}-cluster"
+
+  # Ensure consistent tags across all resources
+  common_tags = merge(
+    var.tags,
+    {
+      Name = "${var.project}-${var.environment}"
+      Project = var.project
+      Environment = var.environment
+      ClusterName = local.cluster_name
+    }
+  )
 }
 
 # EKS Cluster Role
@@ -30,6 +41,17 @@ resource "aws_iam_role_policy_attachment" "cluster_policies" {
   role       = aws_iam_role.cluster.name
 }
 
+# OIDC Provider - Using existing provider created manually
+data "tls_certificate" "eks" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+
+  depends_on = [aws_eks_cluster.main]
+}
+
+data "aws_iam_openid_connect_provider" "eks" {
+  url = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
 # EKS Cluster
 resource "aws_eks_cluster" "main" {
   name     = local.cluster_name
@@ -50,7 +72,7 @@ resource "aws_eks_cluster" "main" {
     aws_iam_role_policy_attachment.cluster_policies
   ]
 
-  tags = var.tags
+  tags = local.common_tags
 }
 
 # Node Group Role
@@ -129,6 +151,21 @@ resource "helm_release" "cluster_autoscaler" {
   version    = "9.29.0"
 
   set {
+    name  = "rbac.serviceAccount.create"
+    value = "true"
+  }
+
+  set {
+    name  = "rbac.serviceAccount.name"
+    value = "cluster-autoscaler"
+  }
+
+  set {
+    name  = "rbac.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = aws_iam_role.cluster_autoscaler.arn
+  }
+
+  set {
     name  = "autoDiscovery.clusterName"
     value = aws_eks_cluster.main.name
   }
@@ -158,15 +195,18 @@ resource "aws_iam_role" "cluster_autoscaler" {
       Action = "sts:AssumeRoleWithWebIdentity"
       Effect = "Allow"
       Principal = {
-        Federated = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}"
+        Federated = data.aws_iam_openid_connect_provider.eks.arn
       }
       Condition = {
         StringEquals = {
+          "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:aud" = "sts.amazonaws.com",
           "${replace(aws_eks_cluster.main.identity[0].oidc[0].issuer, "https://", "")}:sub" = "system:serviceaccount:kube-system:cluster-autoscaler"
         }
       }
     }]
   })
+
+  depends_on = [data.aws_iam_openid_connect_provider.eks]
 }
 
 # IAM policy for cluster autoscaler

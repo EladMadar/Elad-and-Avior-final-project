@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: statuspage
+spec:
+  containers:
+  - name: debug-container
+    image: postgres:13
+    command: 
+    - "/bin/bash"
+    - "-c"
+    - "apt-get update && apt-get install -y iproute2 iputils-ping dnsutils curl && sleep 3600"
+    env:
+    - name: DB_NAME
+      value: "statuspage"
+    - name: DB_USER
+      value: "postgres" 
+    - name: DB_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: statuspage-secrets
+          key: DB_PASSWORD
+    - name: DB_HOST
+      value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+    - name: DB_PORT
+      value: "5432"
+  imagePullSecrets:
+  - name: regcred

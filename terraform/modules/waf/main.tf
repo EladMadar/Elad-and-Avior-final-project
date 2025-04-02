@@ -145,7 +145,7 @@ resource "aws_wafv2_web_acl" "main" {
 
 # CloudWatch Log Group for WAF logs
 resource "aws_cloudwatch_log_group" "waf" {
-  name              = "/aws/waf/${local.name_prefix}"
+  name              = "aws-waf-logs-${local.name_prefix}"
   retention_in_days = var.log_retention_days
 
   tags = var.tags

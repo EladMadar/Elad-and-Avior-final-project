@@ -1,0 +1,30 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: statuspage-ingress
+  namespace: statuspage
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /
+    alb.ingress.kubernetes.io/healthcheck-port: "80"
+    # The following annotation will force HTTPS
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    # For production, you should replace this with your actual ACM certificate ARN
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:us-east-1:992382545251:certificate/example"
+    # This tells external-dns to create DNS records for this ingress
+    external-dns.alpha.kubernetes.io/hostname: status.elad-avior.com
+spec:
+  rules:
+  - host: status.elad-avior.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: statuspage-web
+            port:
+              number: 80

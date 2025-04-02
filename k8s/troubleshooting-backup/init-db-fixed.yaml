@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: statuspage-init-db
+  namespace: statuspage
+spec:
+  backoffLimit: 5
+  activeDeadlineSeconds: 900
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: 
+        - "sh"
+        - "-c"
+        - |
+          echo 'Waiting for database to become available...'
+          for i in $(seq 1 30); do
+            echo "Attempt $i: Connecting to database..."
+            if PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -U "$DB_USER" -d "$DB_NAME" -c 'SELECT 1' > /dev/null 2>&1; then
+              echo 'Connected to database successfully'
+              break
+            else
+              echo 'Failed to connect, retrying in 10s...'
+              if [ $i -eq 30 ]; then
+                echo "Failed to connect after 30 attempts. Exiting."
+                exit 1
+              fi
+              sleep 10
+            fi
+          done
+          
+          cd statuspage
+          echo "Running migrations..."
+          python manage.py migrate --noinput
+          
+          echo "Creating superuser if not exists..."
+          python manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin') if not User.objects.filter(username='admin').exists() else print('Admin user already exists')"
+          
+          echo "Database initialization completed successfully!"
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: statuspage-secrets
+              key: DB_PASSWORD
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: REDIS_HOST
+          value: "statuspage-redis"
+        - name: STATUS_PAGE_CONFIGURATION
+          value: "statuspage.configuration"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: OnFailure

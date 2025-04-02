@@ -20,19 +20,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
-COPY . .
+COPY statuspage/ statuspage/
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
 
-# Create media and static directories
-RUN mkdir -p /app/statuspage/media /app/statuspage/static
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
 
-# Generate secret key
-RUN python statuspage/generate_secret_key.py > /app/statuspage/secretkey.py
-
-# Collect static files
-RUN cd statuspage && python manage.py collectstatic --noinput
-
-# Expose port
-EXPOSE 8000
-
-# Start Gunicorn
-CMD ["gunicorn", "--chdir", "statuspage", "--bind", "0.0.0.0:8000", "statuspage.wsgi:application"]
+# Default command for worker
+CMD ["python", "statuspage/manage.py", "rqworker", "default"]

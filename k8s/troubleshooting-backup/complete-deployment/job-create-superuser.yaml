@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-statuspage-superuser
+  namespace: statuspage
+spec:
+  template:
+    spec:
+      containers:
+      - name: create-superuser
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: 
+        - /bin/bash
+        - -c
+        - |
+          cd statuspage
+          echo "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin') if not User.objects.filter(username='admin').exists() else None" | python manage.py shell
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: statuspage-secrets
+              key: DB_PASSWORD
+        - name: DB_HOST
+          value: "statuspage-db.statuspage.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        envFrom:
+        - configMapRef:
+            name: statuspage-config
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Never
+  backoffLimit: 5

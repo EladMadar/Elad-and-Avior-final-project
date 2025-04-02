@@ -1,0 +1,51 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: patch-web-deployment
+  namespace: statuspage
+spec:
+  template:
+    spec:
+      containers:
+      - name: kubectl
+        image: bitnami/kubectl:latest
+        command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          # Patch the existing web deployment to use an init container for static files
+          kubectl patch deployment statuspage-web -n statuspage --type=json -p='[
+            {
+              "op": "add", 
+              "path": "/spec/template/spec/initContainers", 
+              "value": [
+                {
+                  "name": "fix-static",
+                  "image": "992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest",
+                  "command": ["/bin/bash", "-c"],
+                  "args": ["pip install whitenoise && cd /app/statuspage && echo \"DEBUG = True\" >> statuspage/settings.py && echo \"MIDDLEWARE.insert(1, \'whitenoise.middleware.WhiteNoiseMiddleware\')\" >> statuspage/settings.py && python manage.py collectstatic --noinput"],
+                  "env": [
+                    {"name": "DB_NAME", "value": "statuspage"},
+                    {"name": "DB_USER", "value": "statuspage"},
+                    {"name": "DB_PASSWORD", "value": "postgres"},
+                    {"name": "DB_HOST", "value": "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"},
+                    {"name": "DB_PORT", "value": "5432"},
+                    {"name": "DJANGO_SETTINGS_MODULE", "value": "statuspage.settings"}
+                  ]
+                }
+              ]
+            },
+            {
+              "op": "add",
+              "path": "/spec/template/spec/containers/0/env/-",
+              "value": {"name": "ENABLE_WHITENOISE", "value": "True"}
+            }
+          ]'
+          
+          # Restart the deployment to apply changes
+          kubectl rollout restart deployment statuspage-web -n statuspage
+          
+          # Wait for the rollout to complete
+          kubectl rollout status deployment statuspage-web -n statuspage
+      restartPolicy: Never
+      serviceAccountName: default

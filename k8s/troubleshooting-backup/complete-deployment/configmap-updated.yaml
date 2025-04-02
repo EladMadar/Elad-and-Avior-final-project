@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: statuspage-config
+  namespace: statuspage
+data:
+  ALLOWED_HOSTS: "*,status.elad-avior.com"
+  DEBUG: "False"
+  STATUS_PAGE_CONFIGURATION: "statuspage.configuration"
+  SECRET_KEY: "insecure-key-replace-in-production"
+  DB_HOST: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+  DB_NAME: "statuspage"
+  DB_USER: "postgres"
+  DB_PORT: "5432"

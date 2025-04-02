@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: statuspage
+data:
+  nginx.conf: |
+    server {
+      listen 80;
+      
+      location /static/ {
+        alias /app/statuspage/static/;
+        expires 30d;
+      }
+      
+      location / {
+        proxy_pass http://localhost:8000\;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+      }
+    }

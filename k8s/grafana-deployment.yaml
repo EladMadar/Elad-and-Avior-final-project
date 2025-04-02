@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: statuspage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana:9.3.0
+        ports:
+        - containerPort: 3000
+        env:
+        - name: GF_AUTH_ANONYMOUS_ENABLED
+          value: "true"
+        - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          value: "Admin"
+        - name: GF_PATHS_PROVISIONING
+          value: "/etc/grafana/provisioning"
+        - name: GF_SECURITY_ADMIN_PASSWORD
+          value: "admin"  # In a real environment, use a secret for this
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "200m"
+            memory: "512Mi"
+      volumes:
+      - name: grafana-storage
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: statuspage
+spec:
+  selector:
+    app: grafana
+  ports:
+  - port: 80
+    targetPort: 3000
+  type: ClusterIP

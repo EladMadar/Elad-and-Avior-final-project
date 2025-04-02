@@ -1,0 +1,242 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Status Page Overview",
+    "tags": ["status-page"],
+    "timezone": "browser",
+    "editable": true,
+    "refresh": "10s",
+    "panels": [
+      {
+        "title": "System Status (High Priority)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 24, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "up",
+            "instant": true,
+            "legendFormat": "{{job}}"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "textMode": "auto",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": { "text": "Down", "color": "red" },
+                  "1": { "text": "Up", "color": "green" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Node CPU Usage (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[1m])) * 100)",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Node Memory Usage (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+        "targets": [
+          {
+            "expr": "100 * (1 - (node_memory_MemFree_bytes + node_memory_Buffers_bytes + node_memory_Cached_bytes) / node_memory_MemTotal_bytes)",
+            "legendFormat": "{{instance}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Load Average (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 0, "y": 12},
+        "targets": [
+          {
+            "expr": "node_load1",
+            "legendFormat": "1m load"
+          },
+          {
+            "expr": "node_load5",
+            "legendFormat": "5m load"
+          },
+          {
+            "expr": "node_load15",
+            "legendFormat": "15m load"
+          }
+        ]
+      },
+      {
+        "title": "Network Traffic (Medium Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 8, "y": 12},
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[1m])",
+            "legendFormat": "Receive {{device}}"
+          },
+          {
+            "expr": "rate(node_network_transmit_bytes_total[1m])",
+            "legendFormat": "Transmit {{device}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "Bps"
+          }
+        }
+      },
+      {
+        "title": "Disk Usage (Medium Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 8, "x": 16, "y": 12},
+        "targets": [
+          {
+            "expr": "100 - ((node_filesystem_avail_bytes{mountpoint=\"/\",fstype!=\"rootfs\"} * 100) / node_filesystem_size_bytes{mountpoint=\"/\",fstype!=\"rootfs\"})",
+            "legendFormat": "Disk Usage {{device}}"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "min": 0,
+            "max": 100,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Application Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20},
+        "targets": [
+          {
+            "expr": "count(kube_pod_info{namespace=\"statuspage\",pod=~\"statuspage-web.*\"}) by (pod)",
+            "legendFormat": "{{pod}}"
+          }
+        ],
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "textMode": "auto",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"]
+          }
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": { "text": "Not Running", "color": "red" },
+                  "*": { "text": "Running", "color": "green" }
+                }
+              }
+            ]
+          }
+        }
+      },
+      {
+        "title": "Pod Status",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20},
+        "targets": [
+          {
+            "expr": "kube_pod_container_status_ready{namespace=\"statuspage\"}",
+            "format": "table",
+            "instant": true
+          }
+        ],
+        "transformations": [
+          {
+            "id": "organize",
+            "options": {
+              "excludeByName": {
+                "__name__": true,
+                "endpoint": true,
+                "instance": true,
+                "job": true,
+                "service": true
+              },
+              "indexByName": {
+                "Value": 4,
+                "container": 1,
+                "namespace": 0,
+                "pod": 2,
+                "prometheus": 3
+              },
+              "renameByName": {
+                "Value": "Ready",
+                "container": "Container",
+                "namespace": "Namespace",
+                "pod": "Pod"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  },
+  "overwrite": true
+}

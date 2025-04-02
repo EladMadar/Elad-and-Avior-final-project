@@ -4,11 +4,11 @@ services:
   web:
     build:
       context: .
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.web
     ports:
       - "8000:8000"
     volumes:
-      - .:/app
+      - ./statuspage:/app/statuspage
     environment:
       - DEBUG=1
       - DATABASE_URL=postgres://statuspage:statuspage@db:5432/statuspage
@@ -16,7 +16,29 @@ services:
     depends_on:
       - db
       - redis
-    command: python statuspage/manage.py runserver 0.0.0.0:8000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    volumes:
+      - ./statuspage:/app/statuspage
+    environment:
+      - DATABASE_URL=postgres://statuspage:statuspage@db:5432/statuspage
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+    healthcheck:
+      test: ["CMD", "ps", "aux", "|", "grep", "[r]qworker"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   db:
     image: postgres:14-alpine
@@ -26,25 +48,21 @@ services:
       - POSTGRES_DB=statuspage
       - POSTGRES_USER=statuspage
       - POSTGRES_PASSWORD=statuspage
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U statuspage"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7-alpine
     volumes:
       - redis_data:/data
-
-  worker:
-    build:
-      context: .
-      dockerfile: Dockerfile.dev
-    volumes:
-      - .:/app
-    environment:
-      - DATABASE_URL=postgres://statuspage:statuspage@db:5432/statuspage
-      - REDIS_URL=redis://redis:6379/0
-    depends_on:
-      - redis
-      - db
-    command: python statuspage/manage.py rqworker default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

@@ -67,6 +67,27 @@ resource "aws_s3_bucket" "logs" {
   tags = var.tags
 }
 
+# S3 bucket policy for ALB access logs
+data "aws_elb_service_account" "main" {}
+
+resource "aws_s3_bucket_policy" "logs" {
+  bucket = aws_s3_bucket.logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          AWS = data.aws_elb_service_account.main.arn
+        }
+        Action = "s3:PutObject"
+        Resource = "${aws_s3_bucket.logs.arn}/*"
+      }
+    ]
+  })
+}
+
 # S3 bucket versioning for logs
 resource "aws_s3_bucket_versioning" "logs" {
   bucket = aws_s3_bucket.logs.id

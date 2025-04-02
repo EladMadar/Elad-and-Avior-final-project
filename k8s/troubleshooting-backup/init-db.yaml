@@ -1,0 +1,34 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: statuspage-init-db
+  namespace: statuspage
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command:
+        - "/bin/sh"
+        - "-c"
+        - "cd statuspage && python manage.py migrate --noinput"
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "statuspage"
+        - name: DB_PASSWORD
+          value: "postgres"
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: REDIS_HOST
+          value: "statuspage-redis"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"
+      restartPolicy: Never

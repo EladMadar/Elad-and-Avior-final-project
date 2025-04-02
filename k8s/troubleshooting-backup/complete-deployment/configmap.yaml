@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: statuspage-config
+  namespace: statuspage
+data:
+  ALLOWED_HOSTS: "*,status.elad-avior.com"
+  DEBUG: "False"
+  STATUS_PAGE_CONFIGURATION: "statuspage.configuration"
+  SECRET_KEY: "insecure-key-replace-in-production"

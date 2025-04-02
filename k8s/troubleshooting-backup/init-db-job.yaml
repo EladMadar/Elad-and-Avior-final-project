@@ -1,0 +1,42 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: statuspage-init-db
+  namespace: statuspage
+spec:
+  backoffLimit: 10
+  activeDeadlineSeconds: 1800
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: 
+        - "/bin/bash"
+        - "-c"
+        - "echo 'Waiting for database to become available...' && max_retries=30 && retry_count=0 && while [ $retry_count -lt $max_retries ]; do echo 'Attempting database connection (attempt $((retry_count+1))/$max_retries)...' && if PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c 'SELECT 1' >/dev/null 2>&1; then echo 'Database connection successful!' && break; else echo 'Database not available yet. Retrying in 10 seconds...' && sleep 10 && retry_count=$((retry_count+1)); fi; done && if [ $retry_count -eq $max_retries ]; then echo 'Failed to connect to database after $max_retries attempts. Exiting.' && exit 1; fi && echo 'Running migrations...' && cd statuspage && python manage.py migrate --noinput && echo 'Creating superuser if not exists...' && echo \"from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'admin') if not User.objects.filter(username='admin').exists() else None\" | python manage.py shell || true && echo 'Database initialization completed successfully!'"
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: statuspage-secrets
+              key: DB_PASSWORD
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: REDIS_HOST
+          value: "statuspage-redis"
+        - name: STATUS_PAGE_CONFIGURATION
+          value: "statuspage.configuration"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: OnFailure

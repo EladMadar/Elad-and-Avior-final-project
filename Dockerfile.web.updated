@@ -1,0 +1,32 @@
+FROM python:3.11-slim-bullseye
+
+# Set environment variables
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Set work directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    postgresql-client \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt \
+    && pip install --no-cache-dir rq-scheduler django-rq
+
+# Copy project files
+COPY statuspage/ statuspage/
+COPY entrypoint.sh .
+RUN chmod +x entrypoint.sh
+
+# Set the entrypoint
+ENTRYPOINT ["/app/entrypoint.sh"]
+
+# Default command (can be overridden)
+CMD ["python", "statuspage/manage.py", "runserver", "0.0.0.0:8000"]

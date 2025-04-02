@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloudwatch-exporter
+  namespace: statuspage
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloudwatch-exporter
+  template:
+    metadata:
+      labels:
+        app: cloudwatch-exporter
+    spec:
+      containers:
+      - name: cloudwatch-exporter
+        image: prom/cloudwatch-exporter:cloudwatch_exporter-0.16.0
+        ports:
+        - containerPort: 9106
+        resources:
+          limits:
+            cpu: 200m
+            memory: 256Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        volumeMounts:
+        - name: config
+          mountPath: /config
+        args:
+        - --config.file=/config/config.yml
+      volumes:
+      - name: config
+        configMap:
+          name: cloudwatch-exporter-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudwatch-exporter-config
+  namespace: statuspage
+data:
+  config.yml: |
+    region: us-east-1
+    metrics:
+      # EKS Metrics - High Priority
+      - aws_namespace: AWS/EKS
+        aws_metric_name: cluster_failed_node_count
+        aws_dimensions: [ClusterName]
+        aws_statistics: [Maximum]
+      - aws_namespace: AWS/EKS
+        aws_metric_name: node_cpu_utilization
+        aws_dimensions: [ClusterName]
+        aws_statistics: [Average]
+      - aws_namespace: AWS/EKS
+        aws_metric_name: node_memory_utilization
+        aws_dimensions: [ClusterName]
+        aws_statistics: [Average]
+        
+      # RDS Metrics - High/Medium Priority
+      - aws_namespace: AWS/RDS
+        aws_metric_name: CPUUtilization
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+      - aws_namespace: AWS/RDS
+        aws_metric_name: FreeStorageSpace
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+      - aws_namespace: AWS/RDS
+        aws_metric_name: DatabaseConnections
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+      - aws_namespace: AWS/RDS
+        aws_metric_name: ReadLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+      - aws_namespace: AWS/RDS
+        aws_metric_name: WriteLatency
+        aws_dimensions: [DBInstanceIdentifier]
+        aws_statistics: [Average]
+      
+      # Network Metrics
+      - aws_namespace: AWS/NetworkELB
+        aws_metric_name: ActiveFlowCount
+        aws_dimensions: [LoadBalancer]
+        aws_statistics: [Sum]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloudwatch-exporter
+  namespace: statuspage
+  labels:
+    app: cloudwatch-exporter
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9106"
+spec:
+  ports:
+  - port: 9106
+    targetPort: 9106
+    protocol: TCP
+    name: metrics
+  selector:
+    app: cloudwatch-exporter

@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: init-statuspage-db
+  namespace: statuspage
+spec:
+  template:
+    spec:
+      containers:
+      - name: init-db
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: ["python", "statuspage/manage.py", "migrate", "--noinput"]
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: statuspage-secrets
+              key: DB_PASSWORD
+        - name: DB_HOST
+          value: "statuspage-db.statuspage.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        envFrom:
+        - configMapRef:
+            name: statuspage-config
+      imagePullSecrets:
+      - name: regcred
+      restartPolicy: Never
+  backoffLimit: 5

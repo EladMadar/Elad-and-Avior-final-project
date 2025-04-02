@@ -1,0 +1,84 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Server Monitoring",
+    "tags": ["server", "kubernetes"],
+    "timezone": "browser",
+    "editable": true,
+    "panels": [
+      {
+        "title": "CPU Usage (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "100 - (avg by (instance) (irate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+            "legendFormat": "CPU Usage",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Memory Usage (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "100 * (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes",
+            "legendFormat": "Memory Usage",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "percent",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null },
+                { "color": "yellow", "value": 70 },
+                { "color": "red", "value": 85 }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "System Load (High Priority)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "node_load1",
+            "legendFormat": "Load 1m",
+            "refId": "A"
+          },
+          {
+            "expr": "node_load5",
+            "legendFormat": "Load 5m",
+            "refId": "B"
+          },
+          {
+            "expr": "node_load15",
+            "legendFormat": "Load 15m",
+            "refId": "C"
+          }
+        ]
+      }
+    ]
+  },
+  "overwrite": true
+}

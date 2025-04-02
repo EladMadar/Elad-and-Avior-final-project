@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: statuspage-collectstatic
+  namespace: statuspage
+spec:
+  template:
+    spec:
+      containers:
+      - name: collectstatic
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: 
+        - "sh"
+        - "-c"
+        - |
+          cd statuspage && mkdir -p /tmp/statics && 
+          echo "STATIC_ROOT = '/tmp/statics'" >> statuspage/settings.py && 
+          python manage.py collectstatic --noinput &&
+          cat > statuspage/settings_override.py << 'EOL'
+          import os
+          from pathlib import Path
+          BASE_DIR = Path(__file__).resolve().parent.parent
+          STATIC_URL = '/static/'
+          STATIC_ROOT = os.path.join(BASE_DIR, 'project-static')
+          STATICFILES_DIRS = [
+              os.path.join(BASE_DIR, 'project-static'),
+          ]
+          DEBUG = True
+          EOL
+          echo "from statuspage.settings_override import *" >> statuspage/settings.py
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "statuspage"
+        - name: DB_PASSWORD
+          value: "postgres"
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"
+      restartPolicy: Never

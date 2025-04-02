@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statuspage-redis
+  namespace: statuspage
+  labels:
+    app: statuspage
+    component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: statuspage
+      component: redis
+  template:
+    metadata:
+      labels:
+        app: statuspage
+        component: redis
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+    spec:
+      containers:
+      - name: redis
+        image: redis:6.2-alpine
+        ports:
+        - containerPort: 6379
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        livenessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      - name: redis-exporter
+        image: oliver006/redis_exporter:latest
+        ports:
+        - containerPort: 9121
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statuspage-redis
+  namespace: statuspage
+  labels:
+    app: statuspage
+    component: redis
+spec:
+  selector:
+    app: statuspage
+    component: redis
+  ports:
+  - name: redis
+    port: 6379
+    targetPort: 6379
+    protocol: TCP
+  - name: metrics
+    port: 9121
+    targetPort: 9121
+    protocol: TCP
+  type: ClusterIP

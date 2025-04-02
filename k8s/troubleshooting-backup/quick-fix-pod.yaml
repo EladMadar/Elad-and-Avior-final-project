@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: statuspage-fixed
+  namespace: statuspage
+  labels:
+    app: statuspage
+    component: web-fixed
+spec:
+  containers:
+  - name: statuspage-web
+    image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+    command: 
+    - "/bin/bash"
+    - "-c"
+    - |
+      pip install whitenoise &&
+      cd /app/statuspage &&
+      echo "DEBUG = True" >> statuspage/settings.py &&
+      echo "from whitenoise.middleware import WhiteNoiseMiddleware" >> statuspage/middleware.py &&
+      sed -i "s/MIDDLEWARE = \[/MIDDLEWARE = \['whitenoise.middleware.WhiteNoiseMiddleware',/" statuspage/settings.py &&
+      python manage.py collectstatic --noinput &&
+      gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 statuspage.wsgi:application
+    ports:
+    - containerPort: 8000
+    env:
+    - name: DB_NAME
+      value: "statuspage"
+    - name: DB_USER
+      value: "statuspage"
+    - name: DB_PASSWORD
+      value: "postgres"
+    - name: DB_HOST
+      value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+    - name: DB_PORT
+      value: "5432"
+    - name: REDIS_HOST
+      value: "statuspage-redis"
+    - name: DJANGO_SETTINGS_MODULE
+      value: "statuspage.settings"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statuspage-fixed
+  namespace: statuspage
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: statuspage
+    component: web-fixed
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: statuspage-fixed-lb
+  namespace: statuspage
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    service.beta.kubernetes.io/aws-load-balancer-scheme: "internet-facing"
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: statuspage
+    component: web-fixed

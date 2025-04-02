@@ -2,6 +2,17 @@
 
 locals {
   identifier = "${var.project}-${var.environment}-db"
+
+  # Ensure consistent tags across all resources
+  common_tags = merge(
+    var.tags,
+    {
+      Name = "${var.project}-${var.environment}"
+      Project = var.project
+      Environment = var.environment
+      Component = "database"
+    }
+  )
 }
 
 # Random password for RDS
@@ -13,7 +24,7 @@ resource "random_password" "db_password" {
 # Store password in Secrets Manager
 resource "aws_secretsmanager_secret" "db_password" {
   name = "${local.identifier}-password"
-  tags = var.tags
+  tags = local.common_tags
 }
 
 resource "aws_secretsmanager_secret_version" "db_password" {
@@ -62,21 +73,24 @@ resource "aws_db_parameter_group" "main" {
 
   # Cost-optimized parameters
   parameter {
-    name  = "shared_buffers"
-    value = "{DBInstanceClassMemory/4096}"  # 25% of available memory
+    name         = "shared_buffers"
+    value        = "8192"  # 8MB - static value
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "max_connections"
-    value = "100"  # Adjust based on your needs
+    name         = "max_connections"
+    value        = "100"  # Adjust based on your needs
+    apply_method = "pending-reboot"
   }
 
   parameter {
-    name  = "work_mem"
-    value = "4096"  # 4MB
+    name         = "work_mem"
+    value        = "4096"  # 4MB
+    apply_method = "pending-reboot"
   }
 
-  tags = var.tags
+  tags = local.common_tags
 }
 
 # RDS Instance
@@ -101,14 +115,14 @@ resource "aws_db_instance" "main" {
   parameter_group_name   = aws_db_parameter_group.main.name
 
   # Backup configuration
-  backup_retention_period = var.environment == "prod" ? 7 : 1
+  backup_retention_period = 14  # Keep backups for 14 days as per requirements
   backup_window          = "03:00-04:00"
   maintenance_window     = "Mon:04:00-Mon:05:00"
 
   # Cost optimization settings
   multi_az                = var.environment == "prod"  # Only use Multi-AZ in production
-  skip_final_snapshot     = var.environment != "prod"
-  delete_automated_backups = var.environment != "prod"
+  skip_final_snapshot     = true  # Skip final snapshot to avoid issues
+  delete_automated_backups = false  # Keep automated backups
   
   # Performance Insights (free tier)
   performance_insights_enabled = true
@@ -138,7 +152,7 @@ resource "aws_iam_role" "rds_monitoring" {
     }]
   })
 
-  tags = var.tags
+  tags = local.common_tags
 }
 
 resource "aws_iam_role_policy_attachment" "rds_monitoring" {

@@ -1,157 +1,89 @@
-# Status Page Infrastructure Project
+# Status Page
 
-A production-ready infrastructure setup for a Django-based status page application, optimized for cost-effectiveness and scalability on AWS.
+A production-ready status page application deployed on AWS EKS with proper monitoring and observability.
 
-## Application Overview
+## Architecture
 
-This project deploys a Django status page application that provides:
-- Incident and maintenance management
-- Real-time metrics and monitoring
-- User and subscriber management
-- External integrations (e.g., UptimeRobot)
-- Two-factor authentication
-- Markdown support for messages
-- Custom plugin support
+- **Web Application**: Django-based status page with proper static file serving
+- **Worker**: Background task processing via Django-RQ 
+- **Infrastructure**: AWS EKS (Kubernetes) with proper scaling policies
+  - 2 desired nodes (min: 1, max: 5) in us-east-1 region
+- **Database**: PostgreSQL on AWS RDS
+- **Caching/Queue**: Redis for task queueing
+- **Monitoring**:
+  - Prometheus for metrics collection
+  - Grafana for metrics visualization and dashboards
+  - Exporters for critical metrics (Node, PostgreSQL, Redis)
+  - High-priority metrics: CPU usage, Memory usage, Load metrics
 
-## Infrastructure as Code (Terraform)
+## Deployment
 
-### AWS Architecture ($200-270/month)
+The application is deployed using Terraform with a modular infrastructure design:
 
-#### Network Layer
-- **VPC Setup**
-  - Multi-AZ architecture with public/private subnets
-  - Single NAT Gateway for cost optimization
-  - VPC endpoints for AWS services (S3, ECR)
-  - Estimated cost: ~$30-40/month
-
-#### Compute Layer
-- **EKS Cluster**
-  - SPOT instances (t3a.medium) for 60-70% cost savings
-  - Auto-scaling configuration (1-5 nodes)
-  - Cluster autoscaler enabled
-  - Prometheus monitoring integration
-  - Estimated cost: ~$70-100/month
-
-#### Database Layer
-- **RDS PostgreSQL**
-  - ARM-based instance (db.t4g.medium)
-  - Multi-AZ optional for production
-  - Automated backups (7 days retention)
-  - Performance Insights enabled
-  - Estimated cost: ~$50-60/month
-
-#### Caching Layer
-- **ElastiCache Redis**
-  - ARM-based instance (cache.t4g.medium)
-  - Encryption at rest and in transit
-  - Automatic failover (optional)
-  - Estimated cost: ~$30-40/month
-
-#### Security Layer
-- **Application Load Balancer + WAF**
-  - SSL/TLS termination
-  - WAF rules and rate limiting
-  - Access logs in S3
-  - Estimated cost: ~$30-40/month
-
-## Docker Configuration
-
-### Development Setup
 ```bash
-# Start development environment
-docker-compose up --build
+# Initialize Terraform
+cd terraform/environments/prod
+terraform init
 
-# Run tests
-./test.sh
+# Plan changes
+terraform plan
+
+# Apply changes
+terraform apply
 ```
 
-### Production Setup
-```bash
-# Build production image
-docker build -t status-page:prod .
+## Access
 
-# Push to ECR
-docker tag status-page:prod $ECR_REGISTRY/status-page:prod
-docker push $ECR_REGISTRY/status-page:prod
+- **Status Page**: [https://status.elad-avior.com](https://status.elad-avior.com)
+- **Grafana Dashboard**: [https://status.elad-avior.com/grafana](https://status.elad-avior.com/grafana)
+  - Username: admin
+  - Password: admin
+
+## Infrastructure Components
+
+| Component | Description | Module |
+|-----------|-------------|--------|
+| VPC | AWS VPC with public, private, and database subnets | `modules/vpc` |
+| EKS | Kubernetes cluster for application deployment | `modules/eks` |
+| RDS | PostgreSQL database for application data | `modules/rds` |
+| Redis | In-memory database for caching and task queuing | `modules/redis` |
+| ALB | Application Load Balancer for ingress traffic | `modules/alb` |
+| WAF | Web Application Firewall for security | `modules/waf` |
+| Kubernetes | Application deployments, services, and ingress | `modules/kubernetes` |
+
+## Development
+
+For local development:
+
+```bash
+# Start the application locally
+docker-compose up
 ```
 
-### Container Components
-- Python 3.11 slim Bullseye base image
-- Gunicorn as WSGI server
-- PostgreSQL 14
-- Redis 7.0
-- RQ worker for background tasks
+Access the local development environment at http://localhost:8000
 
-## Quick Start
+## Monitoring
 
-1. **Clone and Configure**
-   ```bash
-   git clone <repository-url>
-   cd status-page
-   ```
+The application includes comprehensive monitoring with Prometheus and Grafana:
 
-2. **Infrastructure Setup**
-   ```bash
-   cd terraform/environments/prod
-   cp terraform.tfvars.example terraform.tfvars
-   # Edit terraform.tfvars with your values
-   
-   # Test infrastructure
-   ../test-infrastructure.sh
-   
-   # Deploy
-   terraform init
-   terraform apply
-   ```
+- **Server Metrics**: CPU usage, memory usage, load metrics (high priority)
+- **Database Metrics**: Connection count, query performance, disk usage
+- **Application Metrics**: Request rate, error rate, response time
+- **Redis Metrics**: Memory usage, command executions, connected clients
 
-3. **Application Deployment**
-   ```bash
-   # Configure kubectl
-   aws eks update-kubeconfig --name status-page-prod-cluster
-   
-   # Deploy application
-   kubectl apply -f k8s/
-   ```
+## Maintaining
 
-## Testing
+To update the application:
 
-### Infrastructure Testing
-```bash
-# Validate Terraform configs
-cd terraform
-./test-infrastructure.sh
+1. Make changes to the application code
+2. Build and push new container images to ECR
+3. Update Terraform configuration if needed
+4. Apply changes with Terraform
 
-# Security checks
-tfsec .
+## Troubleshooting
 
-# Cost estimation
-infracost breakdown --path .
-```
+Common issues and solutions:
 
-### Application Testing
-```bash
-# Run test suite
-./test.sh
-
-# Run specific tests
-docker-compose -f docker-compose.test.yml run --rm web pytest
-```
-
-## Documentation
-- [Detailed Infrastructure Guide](INFRASTRUCTURE.md)
-- [Cost Optimization Strategies](docs/cost-optimization.md)
-- [Security Best Practices](docs/security.md)
-
-## Contributing
-1. Fork the repository
-2. Create your feature branch
-3. Run tests
-4. Submit a pull request
-
-## License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## Acknowledgements
-- Based on the Status-Page project
-- Uses Tailwind UI components (requires license)
-- Inspired by NetBox's architecture
+- **Missing CSS/Styling**: Static files are served via WhiteNoise middleware to ensure proper styling on all devices
+- **Database Connectivity**: Check security groups and ensure RDS instance is running
+- **Mobile Access Issues**: The application uses proper CORS headers and is configured for both IPv4 and IPv6 connectivity

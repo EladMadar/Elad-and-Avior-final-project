@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+      target: production
+    image: ${ECR_REGISTRY}/statuspage-web:${IMAGE_TAG:-latest}
+  
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: production
+    image: ${ECR_REGISTRY}/statuspage-worker:${IMAGE_TAG:-latest}
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+      target: production
+    image: ${ECR_REGISTRY}/statuspage-celery:${IMAGE_TAG:-latest}

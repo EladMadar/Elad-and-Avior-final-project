@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statuspage-web-final
+  namespace: statuspage
+  labels:
+    app: statuspage
+    component: web-final
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: statuspage
+      component: web-final
+  template:
+    metadata:
+      labels:
+        app: statuspage
+        component: web-final
+    spec:
+      volumes:
+      - name: static-files
+        emptyDir: {}
+      initContainers:
+      - name: collect-static
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command:
+        - "/bin/bash"
+        - "-c"
+        - |
+          cd statuspage && 
+          python -c "import os; from pathlib import Path; fpath = Path('statuspage/settings_debug.py'); fpath.write_text('DEBUG = True\nALLOWED_HOSTS = [\"*\"]\n'); print(f'Created {fpath} with DEBUG = True')" &&
+          echo "from statuspage.settings_debug import *" >> statuspage/settings.py &&
+          python manage.py collectstatic --noinput
+        volumeMounts:
+        - name: static-files
+          mountPath: /app/statuspage/static
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "statuspage"
+        - name: DB_PASSWORD
+          value: "postgres"
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"
+      containers:
+      - name: web
+        image: 992382545251.dkr.ecr.us-east-1.amazonaws.com/statuspage-app:latest
+        command: 
+        - "/bin/bash"
+        - "-c"
+        - |
+          pip install whitenoise && 
+          cd statuspage && 
+          python -c "import os; path = 'statuspage/middleware.py'; open(path, 'w').write('from whitenoise.middleware import WhiteNoiseMiddleware\n')" &&
+          python -c "import re; s = open('statuspage/settings.py').read(); s = re.sub(r'MIDDLEWARE = \\[', 'MIDDLEWARE = [\n    \'whitenoise.middleware.WhiteNoiseMiddleware\',', s); open('statuspage/settings.py', 'w').write(s)" &&
+          gunicorn --bind 0.0.0.0:8000 --workers 3 --timeout 120 statuspage.wsgi:application
+        ports:
+        - containerPort: 8000
+        volumeMounts:
+        - name: static-files
+          mountPath: /app/statuspage/static
+        env:
+        - name: DB_NAME
+          value: "statuspage"
+        - name: DB_USER
+          value: "statuspage"
+        - name: DB_PASSWORD
+          value: "postgres"
+        - name: DB_HOST
+          value: "status-page-prod-db.cx248m4we6k7.us-east-1.rds.amazonaws.com"
+        - name: DB_PORT
+          value: "5432"
+        - name: DJANGO_SETTINGS_MODULE
+          value: "statuspage.settings"

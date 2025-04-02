@@ -1,0 +1,133 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Status Page Overview",
+    "tags": ["overview", "status"],
+    "timezone": "browser",
+    "editable": true,
+    "panels": [
+      {
+        "title": "Service Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "text": {}
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "1": { "text": "Online", "color": "green" },
+                  "0": { "text": "Offline", "color": "red" }
+                }
+              }
+            ]
+          }
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"statuspage\"}",
+            "legendFormat": "Status Page Service",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Database Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "text": {}
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "1": { "text": "Online", "color": "green" },
+                  "0": { "text": "Offline", "color": "red" }
+                }
+              }
+            ]
+          }
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"rds\"}",
+            "legendFormat": "Database Service",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Server Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "text": {}
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "1": { "text": "Online", "color": "green" },
+                  "0": { "text": "Offline", "color": "red" }
+                }
+              }
+            ]
+          }
+        },
+        "targets": [
+          {
+            "expr": "up{job=\"kubernetes-nodes\"}",
+            "legendFormat": "Server",
+            "refId": "A"
+          }
+        ]
+      },
+      {
+        "title": "Network Status",
+        "type": "stat",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto"
+        },
+        "targets": [
+          {
+            "expr": "rate(node_network_receive_bytes_total[5m])",
+            "legendFormat": "Network Throughput",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "bps",
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                { "color": "green", "value": null }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "overwrite": true
+}
