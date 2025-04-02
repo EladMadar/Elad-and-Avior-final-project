@@ -65,3 +65,22 @@ terraform.rc
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Ignore Kubernetes secrets and credentials
+k8s/*secrets*.yaml
+k8s/generated-*.yaml
+k8s/updated-*.yaml
+
+# Ignore Terraform sensitive files
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraform.lock.hcl
+*tfplan*
+
+# Ignore other sensitive files
+*.pem
+*.key
+*credential*
+*password*
+*secret*
